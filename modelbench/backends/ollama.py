@@ -31,13 +31,23 @@ def _poll_vram_mb() -> int:
 
 class OllamaBackend(BackendRunner):
     def __init__(self, port: Optional[int] = None):
-        self._port = port or _find_free_port()
+        self._port = port or 11434
         self._process: Optional[subprocess.Popen] = None
         self._model_id: Optional[str] = None
         self._base_url = f"http://localhost:{self._port}"
 
+    def _is_running(self) -> bool:
+        try:
+            resp = httpx.get(f"{self._base_url}/api/tags", timeout=2)
+            return resp.status_code == 200
+        except (httpx.ConnectError, httpx.TimeoutException):
+            return False
+
     def start(self, model_id: str) -> None:
         self._model_id = model_id
+        if self._is_running():
+            # Reuse already-running Ollama instance
+            return
         self._process = subprocess.Popen(
             ["ollama", "serve"],
             env={**__import__("os").environ, "OLLAMA_HOST": f"0.0.0.0:{self._port}"},
