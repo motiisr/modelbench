@@ -53,7 +53,7 @@ class OllamaBackend(BackendRunner):
                 resp = httpx.get(f"{self._base_url}/api/tags", timeout=2)
                 if resp.status_code == 200:
                     return
-            except httpx.ConnectError:
+            except (httpx.ConnectError, httpx.TimeoutException):
                 pass
             time.sleep(0.5)
         raise RuntimeError(f"Ollama did not start within {timeout}s on port {self._port}")
