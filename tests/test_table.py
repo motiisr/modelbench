@@ -68,3 +68,27 @@ def test_render_table_contains_load_time(capsys):
     render_table(record)
     captured = capsys.readouterr()
     assert "8.2" in captured.out  # 8200ms → 8.2s
+
+
+def test_render_table_contains_cost_section_owned_hardware(capsys):
+    record = _make_record()
+    render_table(record, hardware_cost_per_hour=0.0)
+    captured = capsys.readouterr()
+    # Should show free / $0 for owned hardware
+    assert "Self-hosting" in captured.out
+
+
+def test_render_table_contains_gpt4o_mini_comparison(capsys):
+    record = _make_record()
+    render_table(record, hardware_cost_per_hour=0.0)
+    captured = capsys.readouterr()
+    assert "GPT-4o mini" in captured.out
+
+
+def test_render_table_cost_section_rented_hardware(capsys):
+    record = _make_record()
+    render_table(record, hardware_cost_per_hour=2.0)
+    captured = capsys.readouterr()
+    # 45.2 tok/s * 3600 = 162720 tok/hr; $2/162720 * 1M ≈ $12.29/1M
+    assert "Self-hosting" in captured.out
+    assert "GPT-4o" in captured.out

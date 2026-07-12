@@ -52,7 +52,9 @@ def cli():
 @click.option("--backend", default="ollama", show_default=True, help="Backend to use.")
 @click.option("--hardware", default=None, help="Hardware label (auto-detected if omitted).")
 @click.option("--suite", default="v1", show_default=True, help="Prompt suite version.")
-def run(model: str, backend: str, hardware: str, suite: str) -> None:
+@click.option("--hardware-cost", default=0.0, show_default=True, type=float,
+              help="Hourly hardware cost in USD (e.g. 1.50 for a rented cloud GPU). Default 0 for owned hardware.")
+def run(model: str, backend: str, hardware: str, suite: str, hardware_cost: float) -> None:
     """Run benchmark suite against MODEL."""
     if backend != "ollama":
         raise click.UsageError(f"Backend '{backend}' not supported in V1. Use 'ollama'.")
@@ -84,7 +86,7 @@ def run(model: str, backend: str, hardware: str, suite: str) -> None:
         metrics=metrics,
     )
 
-    render_table(record)
+    render_table(record, hardware_cost_per_hour=hardware_cost)
     console.print(f"  Result saved → [dim]{_default_store_path()}[/dim]\n")
 
 
