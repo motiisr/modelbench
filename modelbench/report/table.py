@@ -2,12 +2,28 @@ from rich.console import Console
 from rich.table import Table
 from rich import box
 
+from modelbench.cost import compute_cost_comparison
 from modelbench.store import BenchmarkRecord
 
 console = Console()
 
 
-def render_table(record: BenchmarkRecord) -> None:
+def _format_cost(usd_per_1m: float) -> str:
+    if usd_per_1m == 0.0:
+        return "$0.00 / 1M tokens"
+    if usd_per_1m < 0.01:
+        return f"${usd_per_1m:.4f} / 1M tokens"
+    return f"${usd_per_1m:.2f} / 1M tokens"
+
+
+def _format_multiplier(self_cost: float, api_cost: float) -> str:
+    if self_cost == 0.0:
+        return "∞× cheaper"
+    ratio = api_cost / self_cost
+    return f"{ratio:.0f}× cheaper"
+
+
+def render_table(record: BenchmarkRecord, hardware_cost_per_hour: float = 0.0) -> None:
     r = record.results
 
     # Header
@@ -55,4 +71,15 @@ def render_table(record: BenchmarkRecord) -> None:
     )
 
     console.print(table)
+
+    # Cost projection
+    cc = compute_cost_comparison(
+        tokens_per_sec=r.tokens_per_sec,
+        hardware_cost_per_hour=hardware_cost_per_hour,
+    )
+    hw_label = f"${hardware_cost_per_hour:.2f}/hr" if hardware_cost_per_hour > 0 else "owned hw"
+    console.print(f"  [bold]Self-hosting cost[/bold]    {_format_cost(cc.self_hosting_usd_per_1m)}  ({hw_label})")
+    for name, api_price in cc.api_comparisons:
+        mult = _format_multiplier(cc.self_hosting_usd_per_1m, api_price)
+        console.print(f"  vs [dim]{name:<14}[/dim]  {_format_cost(api_price)}  → [green]{mult}[/green]")
     console.print()
