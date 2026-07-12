@@ -35,7 +35,7 @@ def _detect_hardware() -> tuple[str, int]:
             parts = result.stdout.strip().split(", ")
             name = parts[0].lower().replace(" ", "").replace("nvidia", "").replace("geforce", "")
             vram_mb = int(parts[1]) if len(parts) > 1 else 0
-            return name, vram_mb // 1024
+            return name, round(vram_mb / 1024)
     except Exception:
         pass
     return "unknown", 0
