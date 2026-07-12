@@ -5,13 +5,32 @@ build-backend = "hatchling.build"
 [project]
 name = "modelbench"
 version = "0.1.0"
-description = "Benchmark LLMs on your local hardware"
+description = "Benchmark LLMs on your local hardware — TTFT, tokens/sec, VRAM, cost estimate"
+readme = "README.md"
+license = { text = "MIT" }
 requires-python = ">=3.11"
+authors = [{ name = "Moti Israeli" }]
+keywords = ["llm", "benchmark", "ollama", "local", "gpu"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
     "click>=8.1",
     "rich>=13.0",
     "httpx>=0.27",
 ]
+
+[project.urls]
+Homepage = "https://github.com/motiisr/modelbench"
+Repository = "https://github.com/motiisr/modelbench"
+Issues = "https://github.com/motiisr/modelbench/issues"
 
 [project.optional-dependencies]
 dev = [
