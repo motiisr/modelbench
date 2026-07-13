@@ -1,13 +1,13 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "modelbench"
+name = "tokmark"
 version = "0.2.0"
 description = "Benchmark LLMs on your local hardware — TTFT, tokens/sec, VRAM, cost estimate"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.11"
 authors = [{ name = "Moti Israeli" }]
 keywords = ["llm", "benchmark", "ollama", "local", "gpu"]
@@ -15,7 +15,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -28,9 +27,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/motiisr/modelbench"
-Repository = "https://github.com/motiisr/modelbench"
-Issues = "https://github.com/motiisr/modelbench/issues"
+Homepage = "https://github.com/motiisr/tokmark"
+Repository = "https://github.com/motiisr/tokmark"
+Issues = "https://github.com/motiisr/tokmark/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -42,12 +41,10 @@ dev = [
 [project.scripts]
 modelbench = "modelbench.cli.main:cli"
 
-[tool.hatch.envs.default]
-dependencies = [
-    "pytest>=8.0",
-    "pytest-httpx>=0.30",
-    "pytest-asyncio>=0.23",
-]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["modelbench*"]
+exclude = ["venv*", "dist*", "tests*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
