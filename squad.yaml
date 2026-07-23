@@ -1,6 +1,10 @@
 project: modelbench
 display_name: ModelbBench
 current_phase: 3
+phase_run_count:
+  0: 0
+  2: 0
+  5: 0
 
 spec: /Users/motiisraeli/workspace/docs/superpowers/specs/2026-07-11-modelbench-design.md
 plan: /Users/motiisraeli/workspace/docs/superpowers/plans/2026-07-11-modelbench.md
