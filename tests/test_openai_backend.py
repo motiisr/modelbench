@@ -77,3 +77,31 @@ def test_stop_and_warm_up_are_safe_noops(monkeypatch):
     backend = OpenAIBackend()
     backend.start("gpt-4o-mini")
     backend.stop()  # should not raise
+
+
+def test_infer_raises_on_truncated_json_chunk(httpx_mock: HTTPXMock, monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    backend = OpenAIBackend()
+    backend.start("gpt-4o-mini")
+    httpx_mock.add_response(
+        method="POST",
+        url="https://api.openai.com/v1/chat/completions",
+        content=b'data: {"choices": [{"delta":\n\ndata: [DONE]\n\n',
+    )
+    with pytest.raises(RuntimeError, match="OpenAI inference failed"):
+        backend.infer("Hello", max_tokens=20)
+
+
+def test_infer_raises_when_usage_missing_from_final_chunk(httpx_mock: HTTPXMock, monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    backend = OpenAIBackend()
+    backend.start("gpt-4o-mini")
+    # Content streams but the server never sends a usage chunk (e.g. older
+    # API version without stream_options.include_usage support).
+    httpx_mock.add_response(
+        method="POST",
+        url="https://api.openai.com/v1/chat/completions",
+        content=b'data: {"choices": [{"delta": {"content": "Hi"}}]}\n\ndata: [DONE]\n\n',
+    )
+    result = backend.infer("Hello", max_tokens=20)
+    assert result.output_tokens == 0  # degrades gracefully rather than crashing

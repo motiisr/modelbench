@@ -77,3 +77,41 @@ def test_stop_and_warm_up_are_safe_noops(monkeypatch):
     backend = AnthropicBackend()
     backend.start("claude-haiku-3-5")
     backend.stop()  # should not raise
+
+
+def test_infer_raises_on_truncated_json_chunk(httpx_mock: HTTPXMock, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    backend = AnthropicBackend()
+    backend.start("claude-haiku-3-5")
+    httpx_mock.add_response(
+        method="POST",
+        url="https://api.anthropic.com/v1/messages",
+        content=b"event: content_block_delta\ndata: {\"delta\": {\n\nevent: message_stop\ndata: {}\n\n",
+    )
+    with pytest.raises(RuntimeError, match="Anthropic inference failed"):
+        backend.infer("Hello", max_tokens=20)
+
+
+def test_infer_does_not_misattribute_data_line_without_event_line(httpx_mock: HTTPXMock, monkeypatch):
+    """A data: line arriving without a preceding event: line must not be
+    treated as the previous event's type (regression test for the
+    event_type-staleness bug fixed in this backend)."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    backend = AnthropicBackend()
+    backend.start("claude-haiku-3-5")
+    # content_block_delta event, followed by a bare data: line (no event:
+    # line) that would previously have been misread as another
+    # content_block_delta and ignored for token counting.
+    httpx_mock.add_response(
+        method="POST",
+        url="https://api.anthropic.com/v1/messages",
+        content=(
+            b"event: content_block_delta\n"
+            b'data: {"delta": {"type": "text_delta", "text": "Hi"}}\n\n'
+            b'data: {"usage": {"output_tokens": 10}}\n\n'
+        ),
+    )
+    result = backend.infer("Hello", max_tokens=20)
+    # Since the bare data line has no event_type, it must not be counted as
+    # a message_delta either — output_tokens stays at its default (0).
+    assert result.output_tokens == 0

@@ -68,20 +68,24 @@ class AnthropicBackend(BackendRunner):
                         data = json.loads(line[len("data: "):])
                     except json.JSONDecodeError:
                         continue
+                    # Each SSE event carries exactly one data line in Anthropic's
+                    # format; consume event_type here so a data line without a
+                    # preceding "event:" line (malformed stream) can't be
+                    # misattributed to whatever event type came before it.
+                    consumed_event_type, event_type = event_type, None
 
-                    if event_type == "content_block_delta":
+                    if consumed_event_type == "content_block_delta":
                         delta = data.get("delta", {})
                         if delta.get("type") == "text_delta" and delta.get("text"):
                             received_any_content = True
                             if ttft_ms is None:
                                 ttft_ms = (time.perf_counter() - start_time) * 1000
-
-                    if event_type == "message_delta":
+                    elif consumed_event_type == "message_delta":
                         usage = data.get("usage") or {}
                         output_tokens = usage.get("output_tokens", 0)
 
-        except httpx.HTTPError as e:
-            raise RuntimeError(f"Anthropic inference failed: {e}") from e
+        except httpx.HTTPError:
+            raise RuntimeError("Anthropic inference failed: request error") from None
 
         if not received_any_content or ttft_ms is None:
             raise RuntimeError("Anthropic inference failed: no response tokens received")

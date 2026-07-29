@@ -75,8 +75,8 @@ class OpenAIBackend(BackendRunner):
                     if usage:
                         output_tokens = usage.get("completion_tokens", 0)
 
-        except httpx.HTTPError as e:
-            raise RuntimeError(f"OpenAI inference failed: {e}") from e
+        except httpx.HTTPError:
+            raise RuntimeError("OpenAI inference failed: request error") from None
 
         if not received_any_content or ttft_ms is None:
             raise RuntimeError("OpenAI inference failed: no response tokens received")
