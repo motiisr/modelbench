@@ -6,7 +6,10 @@ from rich.console import Console
 
 from modelbench.backends.ollama import OllamaBackend
 from modelbench.benchmark.runner import BenchmarkRunner
-from modelbench.report.table import render_table
+from modelbench.replay.loader import load_samples
+from modelbench.replay.registry import resolve_candidate
+from modelbench.replay.runner import ReplayRunner
+from modelbench.report.table import render_replay_table, render_table
 from modelbench.store import save_result, load_results
 
 console = Console()
@@ -88,6 +91,47 @@ def run(model: str, backend: str, hardware: str, suite: str, hardware_cost: floa
 
     render_table(record, hardware_cost_per_hour=hardware_cost)
     console.print(f"  Result saved → [dim]{_default_store_path()}[/dim]\n")
+
+
+@cli.command()
+@click.argument("samples_file", type=click.Path(exists=True, path_type=Path))
+@click.option("--candidates", required=True, help="Comma-separated candidate names (e.g. haiku,llama3.3:70b).")
+@click.option("--repeats", default=3, show_default=True, type=int,
+              help="Times to run each sample per candidate (guards against a single noisy run).")
+@click.option("--judge", default=None,
+              help="Candidate name to use as LLM judge for samples with no 'expected' field.")
+@click.option("--hardware-cost", default=0.0, show_default=True, type=float,
+              help="Hourly hardware cost in USD for self-hosted candidates' cost estimate.")
+def replay(samples_file: Path, candidates: str, repeats: int, judge: str, hardware_cost: float) -> None:
+    """Replay SAMPLES_FILE against candidate models, scoring quality and comparing cost/latency."""
+    try:
+        samples = load_samples(samples_file)
+        resolved = [resolve_candidate(name.strip()) for name in candidates.split(",")]
+    except ValueError as e:
+        raise click.ClickException(str(e))
+
+    candidate_objs = [c for c, _kind in resolved]
+    kinds_by_name = {c.name: kind for c, kind in resolved}
+
+    judge_backend = None
+    judge_model_id = None
+    if judge:
+        try:
+            judge_candidate, _ = resolve_candidate(judge.strip())
+        except ValueError as e:
+            raise click.ClickException(str(e))
+        judge_backend = judge_candidate.backend
+        judge_model_id = judge_candidate.model_id
+
+    console.print(f"\n[bold]ModelbBench replay[/bold] — {len(samples)} sample(s) x {len(candidate_objs)} candidate(s)\n")
+
+    runner = ReplayRunner(repeats=repeats, judge_backend=judge_backend, judge_model_id=judge_model_id)
+    try:
+        report = runner.run(samples=samples, candidates=candidate_objs)
+    except (RuntimeError, ValueError) as e:
+        raise click.ClickException(str(e))
+
+    render_replay_table(report, kinds_by_name, hardware_cost_per_hour=hardware_cost)
 
 
 @cli.command()

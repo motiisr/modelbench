@@ -2,7 +2,8 @@ from rich.console import Console
 from rich.table import Table
 from rich import box
 
-from modelbench.cost import compute_cost_comparison
+from modelbench.cost import compute_cost_comparison, compute_cost_per_1m
+from modelbench.replay.runner import ReplayReport
 from modelbench.store import BenchmarkRecord
 
 console = Console()
@@ -82,4 +83,45 @@ def render_table(record: BenchmarkRecord, hardware_cost_per_hour: float = 0.0) -
     for name, api_price in cc.api_comparisons:
         mult = _format_multiplier(cc.self_hosting_usd_per_1m, api_price)
         console.print(f"  vs [dim]{name:<14}[/dim]  {_format_cost(api_price)}  → [green]{mult}[/green]")
+    console.print()
+
+
+def render_replay_table(report: ReplayReport, kinds_by_name: dict[str, str], hardware_cost_per_hour: float = 0.0) -> None:
+    """Render a candidate comparison table for a replay run.
+
+    Self-hosting cost is only computed for local (Ollama) candidates —
+    modelbench doesn't maintain live per-provider cloud pricing, so a cloud
+    candidate's cost column stays an honest "cloud (see provider pricing)"
+    placeholder rather than a fabricated number.
+    """
+    console.print()
+    console.print("[bold]ModelbBench replay[/bold] — candidate comparison")
+    console.rule()
+
+    table = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold")
+    table.add_column("Candidate", style="cyan")
+    table.add_column("Cost / 1M tokens", justify="right")
+    table.add_column("p50 latency", justify="right")
+    table.add_column("Tokens/sec", justify="right")
+    table.add_column("Quality", justify="right")
+
+    for c in report.candidates:
+        kind = kinds_by_name.get(c.name, "unknown")
+        if kind == "ollama":
+            cost_per_1m = compute_cost_per_1m(c.mean_tokens_per_sec, hardware_cost_per_hour)
+            cost_cell = _format_cost(cost_per_1m)
+        else:
+            cost_cell = "[dim]cloud (see provider pricing)[/dim]"
+
+        quality_cell = f"{c.mean_score:.2f} ({c.min_confidence * 100:.0f}% conf, {c.score_method})"
+
+        table.add_row(
+            c.name,
+            cost_cell,
+            f"{c.latency_p50_ms:.0f}ms",
+            f"{c.mean_tokens_per_sec:.1f}",
+            quality_cell,
+        )
+
+    console.print(table)
     console.print()
