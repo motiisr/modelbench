@@ -38,8 +38,16 @@ class CandidateReport:
     latency_p50_ms: float
     mean_score: float
     min_confidence: float
-    score_method: str  # common method across all scored samples, or "mixed"
-    sample_count: int
+    score_method: str      # common method across all scored samples, or "mixed"
+    scores: list[float]    # every individual score (samples x repeats) — the
+                            # distribution, not just its mean; a single point
+                            # value would hide run-to-run variance that later
+                            # phases (dashboard, continuous re-verification)
+                            # need to show as a confidence range.
+    sample_count: int          # number of unique samples
+    total_inference_count: int # sample_count x repeats — distinct from
+                                # sample_count so callers can't mistake one
+                                # for the other when computing cost.
 
 
 @dataclass(frozen=True)
@@ -59,12 +67,30 @@ class ReplayRunner:
     against treating a single noisy run as representative (LLM outputs and
     judge scores are non-deterministic)."""
 
-    def __init__(self, repeats: int = 3, judge_backend: Optional[BackendRunner] = None):
+    def __init__(
+        self,
+        repeats: int = 3,
+        judge_backend: Optional[BackendRunner] = None,
+        judge_model_id: Optional[str] = None,
+    ):
+        if judge_backend is not None and judge_model_id is None:
+            raise ValueError("judge_model_id is required when judge_backend is provided")
         self._repeats = repeats
         self._judge_backend = judge_backend
+        self._judge_model_id = judge_model_id
 
     def run(self, samples: list[Sample], candidates: list[Candidate]) -> ReplayReport:
-        return ReplayReport(candidates=[self._run_candidate(c, samples) for c in candidates])
+        if not samples:
+            raise ValueError("run() requires at least one sample; got an empty samples list")
+
+        if self._judge_backend is not None:
+            self._judge_backend.start(self._judge_model_id)
+            self._judge_backend.warm_up()
+        try:
+            return ReplayReport(candidates=[self._run_candidate(c, samples) for c in candidates])
+        finally:
+            if self._judge_backend is not None:
+                self._judge_backend.stop()
 
     def _run_candidate(self, candidate: Candidate, samples: list[Sample]) -> CandidateReport:
         candidate.backend.start(candidate.model_id)
@@ -87,7 +113,9 @@ class ReplayRunner:
             mean_score=statistics.mean(s.score for s in scores),
             min_confidence=min(s.confidence for s in scores),
             score_method=_common_method(scores),
+            scores=[s.score for s in scores],
             sample_count=len(samples),
+            total_inference_count=len(results),
         )
 
     def _score(self, sample: Sample, result: InferenceResult) -> ScoreResult:
