@@ -1,4 +1,6 @@
+import json
 import subprocess
+from dataclasses import asdict
 from pathlib import Path
 
 import click
@@ -102,13 +104,15 @@ def run(model: str, backend: str, hardware: str, suite: str, hardware_cost: floa
               help="Candidate name to use as LLM judge for samples with no 'expected' field.")
 @click.option("--hardware-cost", default=0.0, show_default=True, type=float,
               help="Hourly hardware cost in USD for self-hosted candidates' cost estimate.")
-def replay(samples_file: Path, candidates: str, repeats: int, judge: str, hardware_cost: float) -> None:
+@click.option("--json", "as_json", is_flag=True, default=False,
+              help="Print the result as JSON instead of a table (for piping into pare's recommendation ingestion).")
+def replay(samples_file: Path, candidates: str, repeats: int, judge: str, hardware_cost: float, as_json: bool) -> None:
     """Replay SAMPLES_FILE against candidate models, scoring quality and comparing cost/latency."""
     try:
         samples = load_samples(samples_file)
         resolved = [resolve_candidate(name.strip()) for name in candidates.split(",")]
-    except ValueError as e:
-        raise click.ClickException(str(e))
+    except (ValueError, OSError, UnicodeDecodeError) as e:
+        raise click.ClickException(f"Failed to load samples: {e}")
 
     candidate_objs = [c for c, _kind in resolved]
     kinds_by_name = {c.name: kind for c, kind in resolved}
@@ -123,7 +127,8 @@ def replay(samples_file: Path, candidates: str, repeats: int, judge: str, hardwa
         judge_backend = judge_candidate.backend
         judge_model_id = judge_candidate.model_id
 
-    console.print(f"\n[bold]ModelbBench replay[/bold] — {len(samples)} sample(s) x {len(candidate_objs)} candidate(s)\n")
+    if not as_json:
+        console.print(f"\n[bold]ModelbBench replay[/bold] — {len(samples)} sample(s) x {len(candidate_objs)} candidate(s)\n")
 
     runner = ReplayRunner(repeats=repeats, judge_backend=judge_backend, judge_model_id=judge_model_id)
     try:
@@ -131,7 +136,10 @@ def replay(samples_file: Path, candidates: str, repeats: int, judge: str, hardwa
     except (RuntimeError, ValueError) as e:
         raise click.ClickException(str(e))
 
-    render_replay_table(report, kinds_by_name, hardware_cost_per_hour=hardware_cost)
+    if as_json:
+        click.echo(json.dumps(asdict(report), indent=2))
+    else:
+        render_replay_table(report, kinds_by_name, hardware_cost_per_hour=hardware_cost)
 
 
 @cli.command()

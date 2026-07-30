@@ -109,3 +109,61 @@ def test_replay_rejects_missing_samples_file():
     runner = CliRunner()
     result = runner.invoke(cli, ["replay", "/no/such/file.jsonl", "--candidates", "haiku"])
     assert result.exit_code != 0
+
+
+def test_replay_json_flag_prints_valid_json_instead_of_table(tmp_path):
+    import json as json_module
+
+    samples_file = tmp_path / "samples.jsonl"
+    samples_file.write_text('{"prompt": "2+2?", "expected": "4"}\n')
+
+    with patch("modelbench.cli.main.ReplayRunner") as MockRunner, \
+         patch("modelbench.cli.main.render_replay_table") as mock_render:
+        mock_instance = MagicMock()
+        mock_instance.run.return_value = _make_report()
+        MockRunner.return_value = mock_instance
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli, ["replay", str(samples_file), "--candidates", "haiku", "--json"]
+        )
+
+    assert result.exit_code == 0, result.output
+    mock_render.assert_not_called()  # --json replaces the human table, doesn't add to it
+    parsed = json_module.loads(result.output)
+    assert parsed["candidates"][0]["name"] == "haiku"
+    assert parsed["candidates"][0]["mean_score"] == 0.9
+
+
+def test_replay_without_json_flag_still_renders_table(tmp_path):
+    samples_file = tmp_path / "samples.jsonl"
+    samples_file.write_text('{"prompt": "2+2?", "expected": "4"}\n')
+
+    with patch("modelbench.cli.main.ReplayRunner") as MockRunner, \
+         patch("modelbench.cli.main.render_replay_table") as mock_render:
+        mock_instance = MagicMock()
+        mock_instance.run.return_value = _make_report()
+        MockRunner.return_value = mock_instance
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["replay", str(samples_file), "--candidates", "haiku"])
+
+    assert result.exit_code == 0, result.output
+    mock_render.assert_called_once()
+
+
+def test_replay_catches_runner_failure_and_shows_clean_error_not_a_traceback(tmp_path):
+    samples_file = tmp_path / "samples.jsonl"
+    samples_file.write_text('{"prompt": "2+2?", "expected": "4"}\n')
+
+    with patch("modelbench.cli.main.ReplayRunner") as MockRunner:
+        mock_instance = MagicMock()
+        mock_instance.run.side_effect = RuntimeError("backend connection failed")
+        MockRunner.return_value = mock_instance
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["replay", str(samples_file), "--candidates", "haiku"])
+
+    assert result.exit_code != 0
+    assert "backend connection failed" in result.output
+    assert "Traceback" not in result.output
