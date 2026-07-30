@@ -19,6 +19,7 @@ class InferenceResult:
     total_latency_ms: float # end-to-end latency, milliseconds
     output_tokens: int      # number of tokens generated
     tokens_per_sec: float   # output throughput (see methodology note above)
+    output_text: str = ""   # generated text; empty for hardware-benchmark-only callers   # output throughput (see methodology note above)
 
 
 class BackendRunner(ABC):

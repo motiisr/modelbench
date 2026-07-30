@@ -49,6 +49,7 @@ class AnthropicBackend(BackendRunner):
         start_time = time.perf_counter()
         output_tokens = 0
         received_any_content = False
+        output_chunks: list[str] = []
 
         try:
             with httpx.stream(
@@ -78,6 +79,7 @@ class AnthropicBackend(BackendRunner):
                         delta = data.get("delta", {})
                         if delta.get("type") == "text_delta" and delta.get("text"):
                             received_any_content = True
+                            output_chunks.append(delta["text"])
                             if ttft_ms is None:
                                 ttft_ms = (time.perf_counter() - start_time) * 1000
                     elif consumed_event_type == "message_delta":
@@ -99,6 +101,7 @@ class AnthropicBackend(BackendRunner):
             total_latency_ms=total_latency_ms,
             output_tokens=output_tokens,
             tokens_per_sec=tokens_per_sec,
+            output_text="".join(output_chunks),
         )
 
     def stop(self) -> None:

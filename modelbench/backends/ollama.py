@@ -91,6 +91,7 @@ class OllamaBackend(BackendRunner):
         start_time = time.perf_counter()
         output_tokens = 0
         eval_duration_ns = 0
+        output_chunks: list[str] = []
 
         try:
             with httpx.stream("POST", f"{self._base_url}/api/generate", json=payload, timeout=120) as resp:
@@ -105,8 +106,10 @@ class OllamaBackend(BackendRunner):
                     except json.JSONDecodeError:
                         continue
 
-                    if ttft_ms is None and chunk.get("response"):
-                        ttft_ms = (time.perf_counter() - start_time) * 1000
+                    if chunk.get("response"):
+                        if ttft_ms is None:
+                            ttft_ms = (time.perf_counter() - start_time) * 1000
+                        output_chunks.append(chunk["response"])
 
                     if chunk.get("done"):
                         output_tokens = chunk.get("eval_count", 0)
@@ -128,6 +131,7 @@ class OllamaBackend(BackendRunner):
             total_latency_ms=total_latency_ms,
             output_tokens=output_tokens,
             tokens_per_sec=tokens_per_sec,
+            output_text="".join(output_chunks),
         )
 
     def stop(self) -> None:
