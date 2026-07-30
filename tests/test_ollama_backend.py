@@ -24,6 +24,7 @@ def test_infer_returns_inference_result(httpx_mock: HTTPXMock):
     assert result.output_tokens == 10
     assert result.ttft_ms > 0
     assert result.total_latency_ms >= result.ttft_ms
+    assert result.output_text == "Hello world"
 
 
 def test_infer_tokens_per_sec_calculated_correctly(httpx_mock: HTTPXMock):

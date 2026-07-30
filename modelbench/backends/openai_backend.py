@@ -45,6 +45,7 @@ class OpenAIBackend(BackendRunner):
         start_time = time.perf_counter()
         output_tokens = 0
         received_any_content = False
+        output_chunks: list[str] = []
 
         try:
             with httpx.stream(
@@ -68,6 +69,7 @@ class OpenAIBackend(BackendRunner):
                     content = choices[0].get("delta", {}).get("content") if choices else None
                     if content:
                         received_any_content = True
+                        output_chunks.append(content)
                         if ttft_ms is None:
                             ttft_ms = (time.perf_counter() - start_time) * 1000
 
@@ -90,6 +92,7 @@ class OpenAIBackend(BackendRunner):
             total_latency_ms=total_latency_ms,
             output_tokens=output_tokens,
             tokens_per_sec=tokens_per_sec,
+            output_text="".join(output_chunks),
         )
 
     def stop(self) -> None:
