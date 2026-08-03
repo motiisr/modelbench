@@ -1,0 +1,38 @@
+name: Publish to PyPI
+
+# Trusted publishing (OIDC) - no stored API token. Requires a one-time setup
+# on pypi.org: project "tokmark" -> Publishing -> add a trusted publisher for
+# this repo/workflow. Until that's configured, this job will fail at the
+# publish step with an authentication error; everything else (build, tests)
+# still runs and validates the release artifact. This workflow only reacts
+# to repo-maintainer-triggered release events and reads no untrusted input.
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-publish:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: pip install -e ".[dev]" build
+
+      - name: Run unit tests
+        run: pytest tests/ -v --tb=short
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
