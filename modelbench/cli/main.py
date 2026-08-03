@@ -105,7 +105,7 @@ def run(model: str, backend: str, hardware: str, suite: str, hardware_cost: floa
 @click.option("--hardware-cost", default=0.0, show_default=True, type=float,
               help="Hourly hardware cost in USD for self-hosted candidates' cost estimate.")
 @click.option("--json", "as_json", is_flag=True, default=False,
-              help="Print the result as JSON instead of a table (for piping into pare's recommendation ingestion).")
+              help="Print the result as JSON instead of a table (for piping into Tokensor's recommendation ingestion).")
 def replay(samples_file: Path, candidates: str, repeats: int, judge: str, hardware_cost: float, as_json: bool) -> None:
     """Replay SAMPLES_FILE against candidate models, scoring quality and comparing cost/latency."""
     try:

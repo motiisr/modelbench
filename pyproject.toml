@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tokmark"
-version = "0.2.0"
-description = "Benchmark LLMs on your local hardware — TTFT, tokens/sec, VRAM, cost estimate"
+version = "0.3.0"
+description = "Benchmark LLMs on your local hardware, or replay real traffic against candidate models to verify quality and cost"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [{ name = "Moti Israeli" }]
-keywords = ["llm", "benchmark", "ollama", "local", "gpu"]
+keywords = ["llm", "benchmark", "ollama", "local", "gpu", "replay", "evaluation"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -27,9 +27,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/motiisr/tokmark"
-Repository = "https://github.com/motiisr/tokmark"
-Issues = "https://github.com/motiisr/tokmark/issues"
+Homepage = "https://github.com/motiisr/modelbench"
+Repository = "https://github.com/motiisr/modelbench"
+Issues = "https://github.com/motiisr/modelbench/issues"
 
 [project.optional-dependencies]
 dev = [
