@@ -12,7 +12,7 @@ modelbench run llama3.2:3b
 Get TTFT, tokens/sec, VRAM usage, and estimated self-hosting cost — in one command.
 
 ```
-ModelBench v0.2.0 — llama3.2:3b on ollama (rtx4080super)
+ModelBench v0.3.0 — llama3.2:3b on ollama (rtx4080super)
 ──────────────────────────────────────────────────────────
   Model load time     8.2s
   Prompt suite        v1 (5 prompts, temp=0.0)
